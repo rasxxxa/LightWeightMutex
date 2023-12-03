@@ -27,9 +27,38 @@ public:
 	}
 };
 
-//#define USE_CUSTOM_MUTEX
-#ifdef USE_CUSTOM_MUTEX
+struct ticket_mutex
+{
+private:
+	std::atomic<unsigned> in = ATOMIC_VAR_INIT(0);
+	std::atomic<unsigned> out = ATOMIC_VAR_INIT(0);
+public:
+	void lock()
+	{
+		auto const my = in.fetch_add(1, std::memory_order_acquire);
+		while (true)
+		{
+			auto const now = out.load(std::memory_order_acquire);
+			if (now == my)
+				return;
+			out.wait(now, std::memory_order_relaxed);
+		}
+	}
+
+	void unlock()
+	{
+		out.fetch_add(1, std::memory_order_release);
+		out.notify_all();
+	}
+};
+
+//#define USE_LIGHT_MUTEX
+#define USE_TICKET_MUTEX
+
+#ifdef USE_LIGHT_MUTEX
 using Mutex = light_mutex;
+#elif defined USE_TICKET_MUTEX
+using Mutex = ticket_mutex;
 #else
 using Mutex = std::mutex;
 #endif
