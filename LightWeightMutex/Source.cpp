@@ -30,8 +30,8 @@ public:
 struct ticket_mutex
 {
 private:
-	std::atomic<unsigned> in = ATOMIC_VAR_INIT(0);
-	std::atomic<unsigned> out = ATOMIC_VAR_INIT(0);
+	alignas(std::hardware_constructive_interference_size) std::atomic<unsigned> in = ATOMIC_VAR_INIT(0);
+	alignas(std::hardware_constructive_interference_size) std::atomic<unsigned> out = ATOMIC_VAR_INIT(0);
 public:
 	void lock()
 	{
@@ -53,7 +53,7 @@ public:
 };
 
 //#define USE_LIGHT_MUTEX
-#define USE_TICKET_MUTEX
+//#define USE_TICKET_MUTEX
 
 #ifdef USE_LIGHT_MUTEX
 using Mutex = light_mutex;
@@ -66,7 +66,7 @@ using Mutex = std::mutex;
 Mutex mutex;
 
 int value = 0;
-constexpr unsigned THREADS = 100;
+constexpr unsigned THREADS = 10;
 
 void Produce()
 {
@@ -86,7 +86,7 @@ int main()
 //		std::cout << "Thread " << thread << " started!" << std::endl;
 		threads[thread] = std::jthread([]() 
 			{
-				for (auto Try : std::ranges::views::iota(0, 10'000'000))
+				for (auto Try : std::ranges::views::iota(0, 10'000))
 					Produce();
 			});
 	}
